@@ -52,15 +52,23 @@ void flip_card(struct CardView *cv) {
   }
 }
 
+void user_message(char * message) {
+  move(LINES - 1, 0);
+  clrtoeol();
+  printw(message);
+}
+
 void init() {
   initscr();
   noecho();
   keypad(stdscr, 1);
+  curs_set(0);
   refresh();
 }
 
 int main () {
   init();
+  user_message("f - flip card    n/p - next/prev card    q - quit");
   int height = 25;
   int width = 35;
   int inity = 0;
