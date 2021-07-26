@@ -10,46 +10,40 @@
 #define MILLION 1000000
 #define MAX_CARD_TEXT_LEN 99
 
-struct CardView {
-  WINDOW *card;
-  char text_q[MAX_CARD_TEXT_LEN];
-  char text_a[MAX_CARD_TEXT_LEN];
-  char **curr_text;
-  int textx;
-  int texty;
+struct CardText {
+  char *q;
+  char *a;
 };
 
-void switch_text(struct CardView *c) {
-  char *tmp;
-  if (*c->curr_text == c->text_q) {
-    tmp = c->text_a;
-  } else {
-    tmp = c->text_q;
-  }
-  *c->curr_text = tmp;
-}
+struct CardView {
+  WINDOW *win;
+  struct CardText *text;
+  int textx;
+  int texty;
+  int is_facing_up;
+};
 
-void flip_card(struct CardView *c) {
-  int starting_width = getmaxx(c->card);
+void flip_card(struct CardView *cv) {
+  int starting_width = getmaxx(cv->win);
   int shrinking = 1;
   int new_width;
   int done = 0;
   while (!done) {
     erase();
-    werase(c->card);
+    werase(cv->win);
     refresh();
-    int width = getmaxx(c->card);
+    int width = getmaxx(cv->win);
     new_width = width - 2;
     if (width < 2) {
       shrinking = 0;
-      switch_text(c);
+      cv->is_facing_up = !cv->is_facing_up;
     }
     new_width = width + (shrinking ? -2 : 2);
-    wresize(c->card, getmaxy(c->card), new_width);
-    mvwin(c->card, getbegy(c->card), getbegx(c->card) + (shrinking ? 1 : -1));
-    box(c->card, 0, 0);
-    mvwprintw(c->card, c->texty, c->textx, *(c->curr_text));
-    wrefresh(c->card);
+    wresize(cv->win, getmaxy(cv->win), new_width);
+    mvwin(cv->win, getbegy(cv->win), getbegx(cv->win) + (shrinking ? 1 : -1));
+    box(cv->win, 0, 0);
+    mvwprintw(cv->win, cv->texty, cv->textx, (cv->is_facing_up ? cv->text->q : cv->text->a));
+    wrefresh(cv->win);
 
     if (new_width == starting_width)
       done = 1;
@@ -58,34 +52,66 @@ void flip_card(struct CardView *c) {
   }
 }
 
-int main () {
+void init() {
   initscr();
   noecho();
   keypad(stdscr, 1);
   refresh();
+}
+
+int main () {
+  init();
   int height = 25;
   int width = 35;
   int inity = 0;
   int initx = 0;
-  WINDOW *card = newwin(height, width, inity, initx);
-  box(card, 0, 0);
+  WINDOW *card_win = newwin(height, width, inity, initx);
+  box(card_win, 0, 0);
 
-  struct CardView c = {
-    .card = card,
-    .text_q = "QQQQQQQQ",
-    .text_a = "AAAAAAAA",
-    .texty = 2,
-    .textx = 3,
+  struct CardText texts[] = {
+    {
+      .q = "q 1",
+      .a = "a 1",
+    },
+    {
+      .q = "q 2",
+      .a = "a 2",
+    },
+    {
+      .q = "q 3",
+      .a = "a 3",
+    },
   };
-  char *tmp = c.text_q;
-  c.curr_text = &tmp;
 
-  wrefresh(card);
+  int curr_text_idx = 0;
+
+  struct CardView cv = {
+    .win = card_win,
+    .text = &texts[curr_text_idx],
+    .textx = 2,
+    .texty = 3,
+    .is_facing_up = 1,
+  };
+
+  mvwprintw(cv.win, cv.texty, cv.textx, (cv.is_facing_up ? cv.text->q : cv.text->a));
+  wrefresh(cv.win);
   int ch;
   while ((ch = getch()) != 'q') {
     switch(ch) {
       case 'f':
-        flip_card(&c);
+        flip_card(&cv);
+        break;
+      case 'n':
+        curr_text_idx = (curr_text_idx == 2) ? 0 : ++curr_text_idx;
+        cv.text = &texts[curr_text_idx];
+        mvwprintw(cv.win, cv.texty, cv.textx, (cv.is_facing_up ? cv.text->q : cv.text->a));
+        wrefresh(cv.win);
+        break;
+      case 'p':
+        curr_text_idx = (curr_text_idx == 0) ? 2 : --curr_text_idx;
+        cv.text = &texts[curr_text_idx];
+        mvwprintw(cv.win, cv.texty, cv.textx, (cv.is_facing_up ? cv.text->q : cv.text->a));
+        wrefresh(cv.win);
         break;
     }
   }
